@@ -1,66 +1,20 @@
-# --- packages/ai/requirements.txt ---
+# LOCUS consolidated Python dependencies
+# Install what you need per subsystem (FL server, realtime sensors, training, etc.)
 
-# AI Models
-tensorflow>=2.13.0
-ultralytics>=8.0.0
-
-# IPC Communication
-pyzmq>=25.0.0
-
-# Audio Processing
-sounddevice>=0.4.6
-librosa>=0.10.0
-
-# Computer Vision
-opencv-python>=4.8.0
-Pillow>=10.0.0
-
-# Data Processing
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Visualization
-matplotlib>=3.7.0
-
-# Utilities
-tqdm>=4.65.0
-python-dateutil>=2.8.2
-
-# Development
-pytest>=7.4.0
-
-# --- packages/federated/requirements.txt ---
-
-# AI Models
-torch>=2.1.0
-tensorflow>=2.13.0
-ultralytics>=8.0.0
-fastapi>=0.110.0
-uvicorn>=0.27.0
-requests>=2.31.0
-
-# IPC Communication
-pyzmq>=25.0.0
+# --- Core runtime (Federated server/client + ZeroMQ bridges) ---
+numpy>=1.26.0
 paho-mqtt>=1.6.1
+pyzmq>=25.0.0
+python-dateutil>=2.8.2
+tensorflow>=2.13.0
 
-# Audio Processing
+# --- Vision & audio sensors / data prep (optional) ---
+ultralytics>=8.0.0      # pulls torch as a dependency for YOLO
+opencv-python>=4.8.0
 sounddevice>=0.4.6
 librosa>=0.10.0
-
-# Computer Vision
-opencv-python>=4.8.0
-Pillow>=10.0.0
-
-# Data Processing
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Visualization
 matplotlib>=3.7.0
 
-# Utilities
+# --- Utilities / developer tooling ---
 tqdm>=4.65.0
-python-dateutil>=2.8.2
-
-# Development
 pytest>=7.4.0

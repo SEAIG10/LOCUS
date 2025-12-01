@@ -226,8 +226,6 @@ PYTHONPATH=. python -m src.context_fusion.time_sync_buffer
    ```
    위 명령은 FR3 → FR5 정책 브릿지를 로컬에서 구동합니다.
 
----
-
 ## 📦 Datasets & Training
 
 - **시나리오 기반 Synthetic 데이터**

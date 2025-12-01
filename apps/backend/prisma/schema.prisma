@@ -1,0 +1,356 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------
+// 1. 사용자 및 인증 (User & Auth)
+// --------------------------------------
+
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String?    @map("password_hash")
+  name         String
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  authProviders AuthProvider[]
+  ownedHomes    Home[]           @relation("HomeOwner")
+  memberships   HomeMember[]
+  createdCalibs MapCalibration[]
+  createdLabels RoomLabel[]
+
+  @@map("users")
+}
+
+model AuthProvider {
+  id             Int          @id @default(autoincrement())
+  userId         Int          @map("user_id")
+  provider       ProviderType
+  providerUserId String       @map("provider_user_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@map("auth_providers")
+}
+
+// --------------------------------------
+// 2. 홈 및 멤버십 (Home & Member)
+// --------------------------------------
+
+model Home {
+  id          Int        @id @default(autoincrement())
+  ownerId     Int        @map("owner_id")
+  name        String
+  addressLine String?    @map("address_line")
+  imageUrl    String?    @map("image_url")
+  modelUrl    String?    @map("model_url")
+  status      HomeStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  owner       User                  @relation("HomeOwner", fields: [ownerId], references: [id])
+  members     HomeMember[]
+  devices     Device[]
+  calibrations MapCalibration[]
+  roomLabels  RoomLabel[]
+  sensorEvents SensorEvent[]
+  predictions PollutionPrediction[]
+
+  @@map("homes")
+}
+
+model HomeMember {
+  id        Int        @id @default(autoincrement())
+  homeId    Int        @map("home_id")
+  userId    Int        @map("user_id")
+  role      MemberRole @default(MEMBER)
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  home Home @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([homeId, userId])
+  @@map("home_members")
+}
+
+// --------------------------------------
+// 3. 디바이스 및 맵 (Device & Map)
+// --------------------------------------
+
+model Device {
+  id           Int          @id @default(autoincrement())
+  homeId       Int          @map("home_id")
+  name         String
+  deviceType   DeviceType   @default(ROBOT_VACUUM) @map("device_type")
+  modelName    String?      @map("model_name")
+  serialNumber String?      @map("serial_number")
+  status       DeviceStatus @default(OFFLINE)
+  lastOnlineAt DateTime?    @map("last_online_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  home         Home                  @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  maps         RobotMap[]
+  locations    RobotLocation[]
+  sensorEvents SensorEvent[]
+  predictions  PollutionPrediction[]
+
+  @@map("devices")
+}
+
+model RobotMap {
+  id        Int      @id @default(autoincrement())
+  deviceId  Int      @map("device_id")
+  version   Int
+  mapName   String?  @map("map_name")
+  mapJson   Json?    @map("map_json")
+  width     Float?
+  height    Float?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  device       Device                @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  calibrations MapCalibration[]
+  roomLabels   RoomLabel[]
+  locations    RobotLocation[]
+  predictions  PollutionPrediction[]
+
+  @@unique([deviceId, version])
+  @@map("robot_maps")
+}
+
+// --------------------------------------
+// 4. 보정 및 라벨 (Calibration & Label)
+// --------------------------------------
+
+model MapCalibration {
+  id                 Int      @id @default(autoincrement())
+  robotMapId         Int      @map("robot_map_id")
+  homeId             Int      @map("home_id")
+  rotationDeg        Float    @default(0) @map("rotation_deg")
+  sensorDirectionDeg Float    @default(0) @map("sensor_direction_deg")
+  scale              Float    @default(1)
+  offsetX            Float    @default(0) @map("offset_x")
+  offsetZ            Float    @default(0) @map("offset_z")
+  createdBy          Int?     @map("created_by")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  robotMap RobotMap @relation(fields: [robotMapId], references: [id], onDelete: Cascade)
+  home     Home     @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  creator  User?    @relation(fields: [createdBy], references: [id])
+
+  @@map("map_calibrations")
+}
+
+model RoomLabel {
+  id         Int       @id @default(autoincrement())
+  homeId     Int       @map("home_id")
+  robotMapId Int?      @map("robot_map_id")
+  name       String
+  colorHex   String?   @map("color_hex")
+  centerX    Float     @default(0) @map("center_x")
+  centerY    Float     @default(0) @map("center_y")
+  centerZ    Float     @default(0) @map("center_z")
+  labelType  LabelType @default(ROOM) @map("label_type")
+  createdBy  Int?      @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  home     Home      @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  robotMap RobotMap? @relation(fields: [robotMapId], references: [id], onDelete: Cascade)
+  creator  User?     @relation(fields: [createdBy], references: [id])
+  points   RoomLabelPolygonPoint[]
+  events   SensorEvent[]
+  predictions PollutionPrediction[]
+
+  @@unique([homeId, name])
+  @@map("room_labels")
+}
+
+model RoomLabelPolygonPoint {
+  id         Int   @id @default(autoincrement())
+  labelId    Int   @map("label_id")
+  orderIndex Int   @map("order_index")
+  x          Float
+  z          Float
+
+  label RoomLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([labelId, orderIndex])
+  @@map("room_label_polygon_points")
+}
+
+// --------------------------------------
+// 5. 로그 및 데이터 (Log & Data)
+// --------------------------------------
+
+model RobotLocation {
+  id              BigInt          @id @default(autoincrement())
+  deviceId        Int             @map("device_id")
+  robotMapId      Int?            @map("robot_map_id")
+  recordedAt      DateTime        @map("recorded_at")
+
+  x               Float
+  y               Float
+  z               Float
+  headingDeg      Float?          @map("heading_deg")
+   
+  rawLat          Float?          @map("raw_lat")
+  rawLng          Float?          @map("raw_lng")
+   
+  source          LocationSource  @default(ROBOT)
+  rawPayloadJson  Json?           @map("raw_payload_json")
+
+  device    Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  robotMap  RobotMap? @relation(fields: [robotMapId], references: [id])
+  
+  // [수정] SensorEvent와의 관계는 유지
+  events    SensorEvent[]
+
+  @@index([deviceId, recordedAt])
+  @@index([robotMapId, recordedAt])
+  @@map("robot_locations")
+}
+
+model SensorEvent {
+  id              BigInt    @id @default(autoincrement())
+  homeId          Int       @map("home_id")
+  deviceId        Int?      @map("device_id")
+  eventTime       DateTime  @map("event_time")
+
+  eventType       EventType @map("event_type")
+  subType         String?   @map("sub_type")
+
+  severity        Severity  @default(INFO)
+  labelId         Int?      @map("label_id")
+  robotLocationId BigInt?   @map("robot_location_id")
+  payloadJson     Json?     @map("payload_json")
+
+  // 🔥 [추가됨] 위치 스냅샷 필드 (필수!!)
+  // RobotLocation 원본이 삭제되어도, 이벤트 발생 위치는 영원히 남겨야 합니다.
+  snapshotX       Float?    @map("snapshot_x")
+  snapshotY       Float?    @map("snapshot_y")
+  snapshotZ       Float?    @map("snapshot_z")
+
+  home          Home           @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  device        Device?        @relation(fields: [deviceId], references: [id])
+  label         RoomLabel?     @relation(fields: [labelId], references: [id])
+  
+  // 🔥 [수정됨] onDelete: SetNull
+  // 오래된 로그(RobotLocation)를 지울 때, 이 이벤트는 지워지지 않고 
+  // robotLocationId만 null로 바뀌면서 안전하게 보존됩니다.
+  robotLocation RobotLocation? @relation(fields: [robotLocationId], references: [id], onDelete: SetNull)
+
+  @@index([homeId, eventTime])
+  @@index([deviceId, eventTime])
+  @@index([labelId, eventTime])
+  @@map("sensor_events")
+}
+
+model PollutionPrediction {
+  id                 BigInt          @id @default(autoincrement())
+  homeId             Int             @map("home_id")
+  deviceId           Int             @map("device_id")
+  robotMapId         Int?            @map("robot_map_id")
+  labelId            Int?            @map("label_id")
+   
+  predictionTime     DateTime        @map("prediction_time")
+  timeWindowStart    DateTime?       @map("time_window_start")
+  timeWindowEnd      DateTime?       @map("time_window_end")
+   
+  pollutionType      PollutionType   @default(CLEANING_NEEDED) @map("pollution_type")
+   
+  probability        Float           
+  modelVersion       String          @map("model_version")
+  featureSummaryJson Json?           @map("feature_summary_json")
+
+  home     Home      @relation(fields: [homeId], references: [id], onDelete: Cascade)
+  device   Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  robotMap RobotMap? @relation(fields: [robotMapId], references: [id])
+  label    RoomLabel? @relation(fields: [labelId], references: [id])
+
+  @@index([homeId, predictionTime])
+  @@map("pollution_predictions")
+}
+
+// --------------------------------------
+// 6. Enums
+// --------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+enum ProviderType {
+  LOCAL
+  GOOGLE
+  APPLE
+}
+
+enum HomeStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
+  VIEWER
+}
+
+enum DeviceType {
+  ROBOT_VACUUM
+  AIR_PURIFIER
+  OTHER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  ERROR
+}
+
+enum LabelType {
+  ROOM
+  ZONE
+}
+
+enum LocationSource {
+  ROBOT
+  MOBILE
+  SIMULATOR
+}
+
+enum EventType {
+  AUDIO
+  VISION
+  SYSTEM
+  USER_ACTION
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum PollutionType {
+  CLEANING_NEEDED
+}

@@ -1,0 +1,33 @@
+.location-section {
+  /* 섹션 스타일은 index.css에서 상속 */
+}
+
+.location-info {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row .label {
+  font-weight: 600;
+  color: #666;
+  font-size: 14px;
+}
+
+.info-row .value {
+  font-family: 'Courier New', monospace;
+  color: #333;
+  font-size: 14px;
+}

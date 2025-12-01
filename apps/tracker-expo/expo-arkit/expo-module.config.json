@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android", "web"],
+  "ios": {
+    "modules": ["ExpoArkitModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.arkit.ExpoArkitModule"]
+  }
+}

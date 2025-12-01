@@ -1,0 +1,71 @@
+{
+  "floor_plan": {
+    "description": "RoomPlan/ARKit 기준 실내 좌표계",
+    "floor_offset": {
+      "x": -4.96,
+      "y": -6.5,
+      "comment": "FLOOR Solid translation offset"
+    },
+    "real_world_bounds": {
+      "x_min": -12.5,
+      "x_max": 0.5,
+      "y_min": -13.5,
+      "y_max": 0.5,
+      "comment": "Approximate bounds of complete_apartment world"
+    }
+  },
+  "zones": [
+    {
+      "id": "balcony",
+      "label": "베란다 (Balcony)",
+      "type": "polygon",
+      "coordinates_world": [
+        [-5.5, -7.5],
+        [-3.5, -7.5],
+        [-3.5, -2.0],
+        [-5.5, -2.0]
+      ],
+      "description": "Balcony area",
+      "color": [200, 240, 255]
+    },
+    {
+      "id": "bedroom",
+      "label": "침실 (Bedroom)",
+      "type": "polygon",
+      "coordinates_world": [
+        [-9.0, -12.0],
+        [1.5, -12.0],
+        [1.5, -7.5],
+        [-9.0, -7.5]
+      ],
+      "description": "Combined bedroom area (ROOM_1 + ROOM_2)",
+      "color": [255, 220, 220]
+    },
+    {
+      "id": "kitchen",
+      "label": "주방 (Kitchen)",
+      "type": "polygon",
+      "coordinates_world": [
+        [-3.5, -4.5],
+        [1.5, -4.5],
+        [1.5, 1.5],
+        [-3.5, 1.5]
+      ],
+      "description": "Kitchen area with appliances",
+      "color": [255, 200, 150]
+    },
+    {
+      "id": "living_room",
+      "label": "거실 (Living Room)",
+      "type": "polygon",
+      "coordinates_world": [
+        [-9.5, -4.5],
+        [-3.5, -4.5],
+        [-3.5, 0.5],
+        [-9.5, 0.5]
+      ],
+      "description": "Main living room area (LIVING_ROOM_1 + LIVING_ROOM_2)",
+      "color": [200, 255, 200]
+    }
+  ]
+}

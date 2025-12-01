@@ -1,0 +1,18 @@
+{
+  "yolo": [
+    { "label": "person_cooking", "confidence": 0.92 },
+    { "label": "knife", "confidence": 0.88 },
+    { "label": "dog", "confidence": 0.73 }
+  ],
+  "yamnet": [
+    { "label": "Dishes", "score": 0.81 },
+    { "label": "Speech", "score": 0.63 },
+    { "label": "Music", "score": 0.41 }
+  ],
+  "sync": [
+    { "step": "t-3s", "latency": 45 },
+    { "step": "t-2s", "latency": 38 },
+    { "step": "t-1s", "latency": 40 },
+    { "step": "t", "latency": 42 }
+  ]
+}

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Build / artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs / data
+results/
+runs/
+*.log
+
+# Node / frontend
+node_modules/
+.npmrc
+.yarn/
+yarn-error.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

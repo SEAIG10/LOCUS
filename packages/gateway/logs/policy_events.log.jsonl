@@ -1,0 +1,24 @@
+{
+  "ts": "2025-12-01T20:45:10",
+  "role": "policy",
+  "type": "decision",
+  "source": "policy_bridge",
+  "action": "CLEAN_NOW",
+  "reason": "Living Room, Kitchen 오염도↑ + 사용자 외출",
+  "eta": 24,
+  "battery": 83,
+  "map": [
+    { "zone": "Living Room", "score": 0.82 },
+    { "zone": "Kitchen", "score": 0.76 },
+    { "zone": "Bedroom", "score": 0.21 }
+  ],
+  "path": [
+    { "zone": "Kitchen", "eta": 8, "prob": 0.91 },
+    { "zone": "Living Room", "eta": 10, "prob": 0.88 },
+    { "zone": "Hallway", "eta": 6, "prob": 0.72 }
+  ],
+  "notes": [
+    "사용자 외출 일정(캘린더) 반영",
+    "최근 3일간 거실 체류시간 증가"
+  ]
+}

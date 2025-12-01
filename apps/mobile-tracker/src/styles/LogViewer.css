@@ -1,0 +1,60 @@
+.log-section {
+  /* 섹션 스타일은 index.css에서 상속 */
+}
+
+.log-container {
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.log-entry {
+  padding: 4px 0;
+  color: #e0e0e0;
+  word-wrap: break-word;
+}
+
+.log-entry.success {
+  color: #4caf50;
+}
+
+.log-entry.error {
+  color: #f44336;
+}
+
+.log-entry.info {
+  color: #2196f3;
+}
+
+.log-entry.warning {
+  color: #ff9800;
+}
+
+.log-entry .timestamp {
+  color: #888;
+  margin-right: 8px;
+}
+
+/* 스크롤바 스타일 */
+.log-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.log-container::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}

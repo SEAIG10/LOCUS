@@ -15,4 +15,5 @@ FEDERATED_DEFAULTS = {
     "local_epochs": 3,
     "learning_rate": 1e-3,
     "local_batch_size": 32,
+    "server_rounds": 3,
 }

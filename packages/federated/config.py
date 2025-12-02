@@ -13,13 +13,11 @@ if str(ROOT_DIR) not in sys.path:
 
 from packages.config.settings import AI_DEFAULTS, FEDERATED_DEFAULTS  # noqa: E402
 
-SERVER_BIND = "tcp://0.0.0.0:5555"
 CLIENT_ID = "home_001"
 
-MQTT_BROKER_HOST = "13.124.210.11"
-MQTT_BROKER_PORT = 1883
-MQTT_KEEPALIVE = 30
-MQTT_TOPIC_NAMESPACE = "locus/fl"
+FLOWER_SERVER_HOST = "0.0.0.0"
+FLOWER_SERVER_PORT = 8080
+FLOWER_SERVER_ADDRESS = f"{FLOWER_SERVER_HOST}:{FLOWER_SERVER_PORT}"
 PRETRAINED_MODEL_PATH = AI_DEFAULTS["gru_model"]
 
 ZMQ_ENDPOINTS: Dict[str, str] = {
@@ -53,6 +51,7 @@ CLIENTS_PER_ROUND = FEDERATED_DEFAULTS["clients_per_round"]
 LOCAL_EPOCHS = FEDERATED_DEFAULTS["local_epochs"]
 LR = FEDERATED_DEFAULTS["learning_rate"]
 LOCAL_BATCH_SIZE = FEDERATED_DEFAULTS["local_batch_size"]
+SERVER_ROUNDS = FEDERATED_DEFAULTS["server_rounds"]
 TRAIN_DATASET_PATH = "data/training_dataset.npz"
 GLOBAL_CKPT_DIR = "results/fl_global"
 LOCAL_CKPT_DIR = "results/fl_local"

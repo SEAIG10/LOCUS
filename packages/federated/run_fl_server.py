@@ -1,47 +1,38 @@
-"""Entry point for the MQTT-based FedPer aggregation server."""
+"""Entry point for the Flower-based aggregation server."""
+
+from __future__ import annotations
 
 import argparse
 
+import flwr as fl
+
 from config import (
     CLIENTS_PER_ROUND,
-    MQTT_BROKER_HOST,
-    MQTT_BROKER_PORT,
-    MQTT_KEEPALIVE,
-    MQTT_TOPIC_NAMESPACE,
+    FLOWER_SERVER_ADDRESS,
     PRETRAINED_MODEL_PATH,
+    SERVER_ROUNDS,
 )
-from server import MQTTFLServer
+from server import LocusFedAvg
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="LOCUS FedPer MQTT server")
+    parser = argparse.ArgumentParser(description="LOCUS Flower FedPer server")
     parser.add_argument(
-        "--broker-host", default=MQTT_BROKER_HOST, help="MQTT broker hostname"
+        "--server-address",
+        default=FLOWER_SERVER_ADDRESS,
+        help="Flower server bind address in host:port format",
     )
     parser.add_argument(
-        "--broker-port", default=MQTT_BROKER_PORT, type=int, help="MQTT broker port"
-    )
-    parser.add_argument(
-        "--topic-namespace",
-        default=MQTT_TOPIC_NAMESPACE,
-        help="Base topic namespace used for FL coordination",
-    )
-    parser.add_argument(
-        "--keepalive",
-        default=MQTT_KEEPALIVE,
+        "--rounds",
+        default=SERVER_ROUNDS,
         type=int,
-        help="MQTT keepalive interval in seconds",
+        help="Number of FL rounds to run",
     )
     parser.add_argument(
         "--clients-per-round",
         default=CLIENTS_PER_ROUND,
         type=int,
-        help="Number of client updates to wait for before aggregating",
-    )
-    parser.add_argument(
-        "--server-id",
-        default="locus_fl_server",
-        help="Unique MQTT client id for the server",
+        help="Minimum number of client updates per round",
     )
     parser.add_argument(
         "--model-path",
@@ -53,16 +44,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    server = MQTTFLServer(
-        broker_host=args.broker_host,
-        broker_port=args.broker_port,
-        topic_namespace=args.topic_namespace,
-        clients_per_round=args.clients_per_round,
-        keepalive=args.keepalive,
-        server_id=args.server_id,
+    strategy = LocusFedAvg(
         model_path=args.model_path,
+        clients_per_round=args.clients_per_round,
     )
-    server.serve_forever()
+    fl.server.start_server(
+        server_address=args.server_address,
+        config=fl.server.ServerConfig(num_rounds=args.rounds),
+        strategy=strategy,
+    )
 
 
 if __name__ == "__main__":

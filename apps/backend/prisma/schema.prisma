@@ -178,6 +178,8 @@ model RoomLabel {
   events   SensorEvent[]
   predictions PollutionPrediction[]
 
+  locations  RobotLocation[]
+
   @@unique([homeId, name])
   @@map("room_labels")
 }
@@ -215,15 +217,19 @@ model RobotLocation {
    
   source          LocationSource  @default(ROBOT)
   rawPayloadJson  Json?           @map("raw_payload_json")
+  labelId        Int?             @map("label_id")
 
   device    Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   robotMap  RobotMap? @relation(fields: [robotMapId], references: [id])
+
+  label      RoomLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
   
   // [수정] SensorEvent와의 관계는 유지
   events    SensorEvent[]
 
   @@index([deviceId, recordedAt])
   @@index([robotMapId, recordedAt])
+  @@index([labelId, recordedAt])
   @@map("robot_locations")
 }
 

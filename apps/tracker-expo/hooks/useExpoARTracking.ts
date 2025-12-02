@@ -43,13 +43,20 @@ type ExpoArkitModuleType = {
   resetOrigin: () => Promise<boolean>;
 };
 
+type ArkitEventMap = {
+  onARFrame: (data: ARTrackingData) => void;
+  onTrackingStateChanged: (event: { type: string; message?: string }) => void;
+};
+
+type ArkitEventEmitter = InstanceType<EventEmitter<ArkitEventMap>>;
+
 // 네이티브 모듈 & 이벤트 emitter 안전 로드
 let NativeModule: ExpoArkitModuleType | null = null;
-let arEmitter: EventEmitter<any> | null = null;
+let arEmitter: ArkitEventEmitter | null = null;
 
 try {
   NativeModule = requireNativeModule<ExpoArkitModuleType>(MODULE_NAME);
-  arEmitter = new EventEmitter<any>(NativeModule as any);
+  arEmitter = new EventEmitter<ArkitEventMap>(NativeModule as any);
 } catch (e) {
   console.warn(`[ExpoArkit] native module 로드 실패:`, e);
   NativeModule = null;

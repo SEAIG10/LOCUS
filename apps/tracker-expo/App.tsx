@@ -19,14 +19,14 @@ import { useRestApiSender } from './hooks/useRestApiSender';
 
 // ⚠️ 백엔드 서버의 /api/log/record 주소로 정확히 입력하세요
 // ngrok을 쓴다면: https://xxxx.ngrok-free.app/api/log/record
+
 // 1. 기본 도메인 (Ngrok 주소가 바뀌면 여기만 변경!)
+const SERVER_HOST = 'https://dad71e48244c.ngrok-free.app';
 
-const SERVER_HOST = 'https://fad6f8263bcc.ngrok-free.app';
 // 2. API 경로 (백엔드 라우터)
-
 const API_PATH = '/api/log/record';
-// 3. 최종 URL 자동 조합
 
+// 3. 최종 URL 자동 조합
 const BACKEND_API_URL = `${SERVER_HOST}${API_PATH}`;
 
 export default function App() {
@@ -90,9 +90,9 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0f0f1e" />
-      
+
       <ScrollView style={styles.scrollView}>
-        
+
         {/* 헤더 */}
         <View style={styles.header}>
           <Text style={styles.title}>LOCUS Tracker</Text>
@@ -154,8 +154,8 @@ export default function App() {
           <View style={styles.statusRow}>
             <Text style={styles.label}>상태</Text>
             <Text style={[styles.value, { color: apiError ? '#ff6348' : '#4ecca3' }]}>
-              {apiError 
-                ? '🔴 전송 실패' 
+              {apiError
+                ? '🔴 전송 실패'
                 : (isTracking ? '🟢 전송 중 (HTTP)' : '⚪ 대기 중')}
             </Text>
           </View>

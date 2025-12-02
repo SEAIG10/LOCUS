@@ -31,7 +31,7 @@ class ContextSensor:
     Pose는 sensor_visual.py에서 YOLOv11n-pose로 처리됩니다.
     """
 
-    def __init__(self, default_zone="living_room", enable_location_tracker=False, tracker_ws_uri=None):
+    def __init__(self, default_zone="living_room", enable_location_tracker=False, tracker_ws_uri=wss://aa67c6fd79a9.ngrok-free.app):
         """
         컨텍스트 센서를 초기화합니다.
 

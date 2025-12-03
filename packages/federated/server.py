@@ -1,4 +1,4 @@
-"""Flower-based aggregation server without TensorFlow dependency."""
+"""Flower-based aggregation server (pure NumPy, no TensorFlow)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import Dict, List, Sequence, Tuple
 
 import flwr as fl
 import numpy as np
-import tensorflow as tf
 from flwr.common import FitIns, Parameters, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
@@ -19,7 +18,7 @@ from .fl_utils import log_fl_event
 class LocusFedAvg(fl.server.strategy.FedAvg):
     """
     Custom FedAvg strategy that emits FL events and saves checkpoints.
-    TensorFlow is removed entirely; the server uses pure NumPy arrays.
+    TensorFlow is not used at all. The server only works with NumPy weights.
     """
 
     def __init__(
@@ -27,19 +26,23 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         model_path: str | Path = PRETRAINED_MODEL_PATH,
         clients_per_round: int = CLIENTS_PER_ROUND,
     ) -> None:
+
         self.model_path = Path(model_path).expanduser().resolve()
+
         if not self.model_path.exists():
             raise FileNotFoundError(
-                f"Pretrained weights not found at {self.model_path}. "
-                f"Expecting a .npy or .npz file containing initial weights."
+                f"Initial weights not found at {self.model_path}. "
+                f"Expecting a .npy (or .npz) file containing a list of NumPy arrays."
             )
 
-        # Load initial weights directly from the Keras model
-        keras_model = tf.keras.models.load_model(self.model_path)
-        initial_weights = keras_model.get_weights()
+        # Load weights from .npy
+        initial_weights = np.load(self.model_path, allow_pickle=True)
+        if isinstance(initial_weights, np.ndarray):
+            initial_weights = initial_weights.tolist()
+
         initial_parameters = ndarrays_to_parameters(initial_weights)
 
-        # Create checkpoint directory
+        # Prepare output directory
         self.ckpt_dir = Path(GLOBAL_CKPT_DIR)
         self.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -59,15 +62,15 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         parameters: Parameters,
         client_manager: ClientManager,
     ) -> List[Tuple[ClientProxy, FitIns]]:
+
         instructions = super().configure_fit(server_round, parameters, client_manager)
         instructions = self._attach_round_config(instructions, server_round)
 
-        targets = [client.cid for client, _ in instructions]
         log_fl_event(
             "server",
             "round_start",
             round=server_round,
-            targets=targets,
+            targets=[client.cid for client, _ in instructions],
         )
         return instructions
 
@@ -85,7 +88,8 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         instructions: List[Tuple[ClientProxy, FitIns]],
         server_round: int,
     ) -> List[Tuple[ClientProxy, FitIns]]:
-        updated: List[Tuple[ClientProxy, FitIns]] = []
+
+        updated = []
         for client, fit_ins in instructions:
             fit_ins.config = {**(fit_ins.config or {}), "server_round": server_round}
             updated.append((client, fit_ins))
@@ -98,6 +102,8 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         results: List[Tuple[ClientProxy, fl.common.FitRes]],
         failures: List[BaseException],
     ):
+
+        # Log incoming updates
         for client, fit_res in results:
             metrics = fit_res.metrics or {}
             log_fl_event(
@@ -115,21 +121,21 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         parameters, metrics = aggregated
 
         if parameters is not None:
+
             weights = parameters_to_ndarrays(parameters)
 
-            # Save checkpoint as NumPy file
+            # Save checkpoint to .npy
             ckpt_path = self.ckpt_dir / f"round_{server_round}.npy"
             np.save(ckpt_path, weights, allow_pickle=True)
 
             avg_loss = self._average_metric(results, "val_loss")
-            contributors = [client.cid for client, _ in results]
 
             log_fl_event(
                 "server",
                 "round_agg",
                 round=server_round,
                 avg_loss=avg_loss,
-                contributors=contributors,
+                contributors=[client.cid for client, _ in results],
             )
             log_fl_event(
                 "server",
@@ -146,14 +152,14 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         results: Sequence[Tuple[ClientProxy, fl.common.FitRes]],
         key: str,
     ) -> float | None:
+
         values = []
         for _, fit_res in results:
             metrics = fit_res.metrics or {}
             if key in metrics and metrics[key] is not None:
                 values.append(float(metrics[key]))
-        if not values:
-            return None
-        return float(np.mean(values))
+
+        return float(np.mean(values)) if values else None
 
 
 __all__ = ["LocusFedAvg"]

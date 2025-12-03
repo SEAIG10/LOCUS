@@ -9,6 +9,8 @@ venv/
 env/
 .env
 .env.*
+tf_export_env/
+.tf_export_env/
 
 # Build / artifacts
 dist/

@@ -20,7 +20,7 @@ SUPERLINK_PORT = 8080
 SUPERLINK_ADDRESS = f"{SUPERLINK_HOST}:{SUPERLINK_PORT}"
 CONTROLLER_APP_PATH = "packages.federated.controller_app:main"
 
-PRETRAINED_MODEL_PATH = AI_DEFAULTS["gru_model"]
+PRETRAINED_MODEL_PATH = "packages/ai/models/gru/gru_initial_weights.npy"
 
 ZMQ_ENDPOINTS: Dict[str, str] = {
     "location": "ipc:///tmp/locus.location",

@@ -10,7 +10,7 @@ import flwr as fl
 import numpy as np
 import tensorflow as tf
 
-from config import (
+from .config import (
     CLIENT_ID,
     CONTEXT_DIM,
     LOCAL_BATCH_SIZE,
@@ -20,7 +20,7 @@ from config import (
     PRETRAINED_MODEL_PATH,
     TRAIN_DATASET_PATH,
 )
-from fl_utils import log_fl_event, resolve_dataset_path
+from .fl_utils import log_fl_event, resolve_dataset_path
 
 
 class LocusFlowerClient(fl.client.NumPyClient):

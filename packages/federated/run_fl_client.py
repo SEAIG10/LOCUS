@@ -7,7 +7,7 @@ import argparse
 import flwr as fl
 
 from client import LocusFlowerClient
-from config import (
+from .config import (
     CLIENT_ID,
     FLOWER_SERVER_ADDRESS,
     LOCAL_BATCH_SIZE,

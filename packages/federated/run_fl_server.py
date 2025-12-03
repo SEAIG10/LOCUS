@@ -6,13 +6,13 @@ import argparse
 
 import flwr as fl
 
-from config import (
+from .config import (
     CLIENTS_PER_ROUND,
     FLOWER_SERVER_ADDRESS,
     PRETRAINED_MODEL_PATH,
     SERVER_ROUNDS,
 )
-from server import LocusFedAvg
+from .server import LocusFedAvg
 
 
 def parse_args() -> argparse.Namespace:

@@ -12,8 +12,8 @@ from flwr.common import FitIns, Parameters, ndarrays_to_parameters, parameters_t
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from config import CLIENTS_PER_ROUND, GLOBAL_CKPT_DIR, PRETRAINED_MODEL_PATH
-from fl_utils import log_fl_event
+from .config import CLIENTS_PER_ROUND, GLOBAL_CKPT_DIR, PRETRAINED_MODEL_PATH
+from .fl_utils import log_fl_event
 
 
 class LocusFedAvg(fl.server.strategy.FedAvg):

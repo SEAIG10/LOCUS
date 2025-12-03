@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys   # ← 바로 이 줄이 없어서 터진 것
 
 from packages.federated.config import SERVER_ADDRESS, TRAIN_DATASET_PATH
 from packages.ai.realtime.fl_client import run_fl_client
@@ -15,18 +16,20 @@ def build_local_fl_dataset() -> None:
     build_fl_dataset(output_path=output_path)
 
 
-def main() -> None:
-    # 1) 로컬 로그 → npz 데이터셋 생성 (현재는 더미)
+def main(server_address: str | None = None) -> None:
+    # 1) 로컬 로그 → npz 데이터셋 생성
     build_local_fl_dataset()
 
-    # 2) Flower 서버에 접속해 1라운드 학습 참가
-    print(f"[LOCUS FL Client] Connecting to Flower server at {SERVER_ADDRESS} ...")
-    run_fl_client(SERVER_ADDRESS)
+    # 2) FL 서버 접속
+    addr = server_address or SERVER_ADDRESS
+    print(f"[LOCUS FL Client] Connecting to Flower server at {addr} ...")
+    run_fl_client(addr)
 
-    # 3) 서버 쪽 글로벌 체크포인트에서 최신 weights 가져와 로컬 GRU 업데이트
+    # 3) FL 글로벌 베이스 업데이트
     print("[LOCUS FL Client] Updating local GRU with latest global checkpoint...")
     update_gru_from_global()
 
 
 if __name__ == "__main__":
-    main()
+    cli_addr = sys.argv[1] if len(sys.argv) > 1 else None
+    main(server_address=cli_addr)

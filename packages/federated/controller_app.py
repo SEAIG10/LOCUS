@@ -20,3 +20,8 @@ def main() -> ServerApp:
 
 
 __all__ = ["main"]
+
+from flwr.server import run_server_app
+
+if __name__ == "__main__":
+    run_server_app(main)

@@ -209,19 +209,3 @@ def client_app() -> ClientApp:
         )
 
     return ClientApp(client_fn=client_fn)
-
-
-if __name__ == "__main__":
-    import sys
-
-    # 사용법: python -m packages.ai.realtime.fl_client <server_ip:port>
-    server_address = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1:8080"
-
-    print(f"[FL client] Connecting to Flower server at {server_address} ...")
-
-    client = LocusClient()
-    fl.client.start_client(
-        server_address=server_address,
-        client=client.to_client(),  # NumPyClient → 통신용 클라이언트로 변환
-    )
-

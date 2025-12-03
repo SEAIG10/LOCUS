@@ -11,8 +11,11 @@ from .server import LocusFedAvg
 
 def main() -> ServerApp:
     """Return a ServerApp consumed by `flower-supernode --app=...`."""
+    strategy = LocusFedAvg(
+        model_path=PRETRAINED_MODEL_PATH,
+        clients_per_round=CLIENTS_PER_ROUND
+    )
 
-    strategy = LocusFedAvg(model_path=PRETRAINED_MODEL_PATH, clients_per_round=CLIENTS_PER_ROUND)
     return ServerApp(
         config=fl.server.ServerConfig(num_rounds=SERVER_ROUNDS),
         strategy=strategy,
@@ -20,8 +23,3 @@ def main() -> ServerApp:
 
 
 __all__ = ["main"]
-
-from flwr.server import run_server_app
-
-if __name__ == "__main__":
-    run_server_app(main)

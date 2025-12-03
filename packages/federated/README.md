@@ -72,7 +72,7 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 | 3 | Audio Context | YAMNet + 17-class head로 실내 소리 인식 및 확률 벡터 송신 | `realtime/sensor_audio.py`, `src/audio_recognition/yamnet_processor.py` |
 | 4 | TimeSyncBuffer & Context Encoder | 멀티모달 메시지를 ±100ms 윈도우로 정렬, AttentionContextEncoder로 160차원 벡터 생성 | `src/context_fusion/time_sync_buffer.py`, `src/context_fusion/attention_context_encoder.py`, `src/context_fusion/context_vector.py` |
 | 5 | Sequential GRU + Policy | 30-step 시퀀스로 zone contamination probability 예측 후 정책 이벤트 생성 | `realtime/gru_predictor.py`, `realtime/utils.py`, `src/policy/policy_engine.py` |
-| 6 | Federated Learning (FedPer) | Flower 제어 서버/클라이언트, base GRU 공유, head 로컬 유지 | `server.py`, `client.py`, `run_fl_server.py`, `run_fl_client.py` |
+| 6 | Federated Learning (FedPer) | Flower SuperNode 제어 + ClientApp, base GRU 공유, head 로컬 유지 | `controller_app.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
 | 7 | Dataset Builder & Scenario Simulator | 시나리오에서 (X, y) 시퀀스 생성, synthetic 데이터로 GRU 학습 지원 | `src/dataset/dataset_builder.py`, `src/dataset/scenario_generator.py` |
 
 ---
@@ -86,7 +86,7 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 | FR3 | YAMNet 기반 Audio Context 파이프라인 | `src/audio_recognition/yamnet_processor.py`, `realtime/sensor_audio.py` |
 | FR4 | TimeSyncBuffer (timestamp 정렬, 컨텍스트 벡터, 30-step 시퀀스) | `src/context_fusion/time_sync_buffer.py`, `src/context_fusion/context_types.py` |
 | FR5 | Sequential GRU 예측 및 정책 후처리 | `realtime/gru_predictor.py`, `src/policy/policy_engine.py` |
-| FR6 | Federated Learning (Base 공유, Head 로컬) | `server.py`, `client.py`, `run_fl_server.py`, `run_fl_client.py` |
+| FR6 | Federated Learning (Base 공유, Head 로컬) | `controller_app.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
 | FR7 | Central Policy Engine + Dashboard Bridge | `src/policy/policy_engine.py`, `src/context_fusion/dashboard_bridge.py` |
 
 ### Non-Functional Goals
@@ -105,8 +105,8 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 ├── README.md
 ├── config.py                 # 글로벌 상수 (Flower, ZMQ, GRU 설정)
 ├── config/                   # zone 정의 및 추가 JSON 설정
-├── client.py / server.py     # Flower FedPer 핵심 로직
-├── run_fl_client.py / run_fl_server.py  # CLI 엔트리포인트
+├── controller_app.py         # Flower SuperNode 전략 로더
+├── server.py                 # 커스텀 FedAvg 전략
 ├── realtime/                 # FR3 → FR4 ZeroMQ ingest 도구
 ├── src/
 │   ├── spatial_mapping/      # FR1: RoomPlan & 위치 인텔리전스
@@ -132,8 +132,15 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-2. **Flower 서버 주소**
-   - `config.py`의 `FLOWER_SERVER_ADDRESS`(기본: `0.0.0.0:8080`)를 환경에 맞게 조정하세요.
+2. **Flower SuperNode**
+   - `config.py`의 `SUPERLINK_ADDRESS`(기본 `0.0.0.0:8080`)를 환경에 맞게 조정하세요.
+   - 서버 실행:
+     ```bash
+     flower-supernode \
+       --insecure \
+       --superlink=0.0.0.0:8080 \
+       --app=packages.federated.controller_app:main
+     ```
 3. **ZeroMQ IPC 권한**
    - 기본 IPC 경로는 `/tmp/locus.*`입니다. 필요 시 `config.ZMQ_ENDPOINTS`로 수정하세요.
 4. **Pretrained GRU 확인**
@@ -190,27 +197,25 @@ PYTHONPATH=. python -m src.context_fusion.time_sync_buffer
 
 ## 🤝 Federated Learning Workflow
 
-1. **Server (Flower FedAvg)**  
+1. **Server (Flower SuperNode + Controller App)**  
    ```bash
-   python -m run_fl_server \
-     --server-address 0.0.0.0:8080 \
-     --rounds 3 \
-     --clients-per-round 1 \
-     --model-path ../ai/models/gru/gru_model.keras
+   flower-supernode \
+     --insecure \
+     --superlink=0.0.0.0:8080 \
+     --app=packages.federated.controller_app:main
    ```
-   - 글로벌 가중치는 `results/fl_global/round_<n>.keras`로 저장됩니다.
-   - `LocusFedAvg` 전략은 base GRU layer만 집계하고, Flower gRPC 채널로 새 round 파라미터를 브로드캐스트합니다.
+   - `controller_app.py`는 `packages/ai/models/gru/gru_model.keras`를 직접 로드해 초기 가중치를 가져옵니다.
+   - 라운드별 체크포인트는 `results/fl_global/round_<n>.npy`에 저장됩니다.
 
 2. **Clients (각 현장 디바이스)**  
    ```bash
-   python -m run_fl_client \
-     --server-address 127.0.0.1:8080 \
-     --client-id home_001 \
-     --dataset-path ../ai/data/training_dataset.npz \
-     --model-path ../ai/models/gru/gru_model.keras
+   flower-client-app \
+     --insecure \
+     --server-address=127.0.0.1:8080 \
+     --app=packages.ai.realtime.fl_client:client_app
    ```
-   - `client.py`는 `.npz` 데이터셋을 로드해 `LOCAL_EPOCHS`, `LOCAL_BATCH_SIZE`, `LR`에 따라 파인튜닝합니다.
-   - 학습 후 base layer 가중치만 Flower 서버로 송신하며, `results/fl_local/<client_id>_round_<n>.keras`로 로컬 스냅샷을 유지합니다.
+   - `fl_client.client_app()`이 Keras 모델과 `.npz` 데이터셋을 로드해 `LOCAL_EPOCHS`, `LOCAL_BATCH_SIZE`, `LR`로 학습을 수행합니다.
+   - 학습 & 평가 메트릭은 `packages/federated/logs/fl_events.log.jsonl`로 기록되어 대시보드에서 재사용됩니다.
 
 3. **ZeroMQ Ingest (FR3 → FR4)**  
    GRU Predictor가 송신하는 실시간 컨텍스트 시퀀스를 수집하려면 아래 브리지를 실행하세요.
@@ -255,7 +260,7 @@ HTTP/ZeroMQ 기반 대시보드는 모두 제거되었으며, 개인정보 보�
 - `config.py`
   - **ZeroMQ**: `ZMQ_ENDPOINTS`에 location/visual/audio/context/telemetry 엔드포인트가 정의되어 있습니다.
   - **Sequence/Vector**: `SEQUENCE_LENGTH=30`, `CONTEXT_DIM=160`, `TIMESYNC_WINDOW_MS=100`.
-  - **Federated**: `FLOWER_SERVER_ADDRESS`, `CLIENTS_PER_ROUND`, `SERVER_ROUNDS`, `LOCAL_EPOCHS`, `LR`, `LOCAL_BATCH_SIZE`.
+  - **Federated**: `SUPERLINK_ADDRESS`, `CLIENTS_PER_ROUND`, `SERVER_ROUNDS`, `LOCAL_EPOCHS`, `LR`, `LOCAL_BATCH_SIZE`.
   - **Zones**: `ZONE_NAMES`와 `packages/config/zones_config.json`이 구역 인덱스를 공유합니다.
 - **ZeroMQ Topics**
   - `locus.location`, `locus.visual`, `locus.audio`, `locus.context`, `locus.telemetry`.
@@ -277,11 +282,11 @@ HTTP/ZeroMQ 기반 대시보드는 모두 제거되었으며, 개인정보 보�
 - **`FileNotFoundError: gru_model.keras`**  
   → `../ai/models/gru/gru_model.keras`가 존재하는지 확인하고, 새 모델을 동일 경로에 배치하세요.
 - **Flower 연결 실패 (`grpc_status: UNAVAILABLE`)**  
-  → `run_fl_server`가 실행 중인지 확인하고, `FLOWER_SERVER_ADDRESS`에 방화벽/포트가 허용되어 있는지 점검하세요.
+  → `flower-supernode`가 실행 중인지 확인하고, `SUPERLINK_ADDRESS` 포트가 방화벽에서 열려 있는지 점검하세요.
 - **ZeroMQ IPC Permission**  
   → `/tmp` 대신 사용자 홈 디렉터리 아래 경로를 `config.ZMQ_ENDPOINTS`에 지정하거나 `chmod`로 권한을 조정하세요.
 - **Dataset 누락**  
-  → `client.py`가 `data/training_dataset.npz`를 찾지 못하면 `DatasetBuilder.save_dataset()`을 실행하여 기본 세트를 생성하십시오.
+  → `packages/ai/realtime/fl_client.py`에서 참조하는 `data/training_dataset.npz`가 없다면 `DatasetBuilder.save_dataset()`을 실행해 기본 세트를 생성하세요.
 ---
 
 ## 👥 Team

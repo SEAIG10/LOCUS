@@ -3,11 +3,10 @@
 
 # --- Core runtime (Federated server/client + ZeroMQ bridges) ---
 numpy>=1.26.0
-paho-mqtt>=1.6.1
 pyzmq>=25.0.0
 python-dateutil>=2.8.2
 tensorflow>=2.13.0
-flwr>=1.8.0
+flwr>=1.24.0
 
 # --- Vision & audio sensors / data prep (optional) ---
 ultralytics>=8.0.0      # pulls torch as a dependency for YOLO

@@ -15,9 +15,11 @@ from packages.config.settings import AI_DEFAULTS, FEDERATED_DEFAULTS  # noqa: E4
 
 CLIENT_ID = "home_001"
 
-FLOWER_SERVER_HOST = "0.0.0.0"
-FLOWER_SERVER_PORT = 8080
-FLOWER_SERVER_ADDRESS = f"{FLOWER_SERVER_HOST}:{FLOWER_SERVER_PORT}"
+SUPERLINK_HOST = "0.0.0.0"
+SUPERLINK_PORT = 8080
+SUPERLINK_ADDRESS = f"{SUPERLINK_HOST}:{SUPERLINK_PORT}"
+CONTROLLER_APP_PATH = "packages.federated.controller_app:main"
+
 PRETRAINED_MODEL_PATH = AI_DEFAULTS["gru_model"]
 
 ZMQ_ENDPOINTS: Dict[str, str] = {
@@ -54,4 +56,3 @@ LOCAL_BATCH_SIZE = FEDERATED_DEFAULTS["local_batch_size"]
 SERVER_ROUNDS = FEDERATED_DEFAULTS["server_rounds"]
 TRAIN_DATASET_PATH = "data/training_dataset.npz"
 GLOBAL_CKPT_DIR = "results/fl_global"
-LOCAL_CKPT_DIR = "results/fl_local"

@@ -1,4 +1,4 @@
-"""Flower-based aggregation server that tracks dashboard events."""
+"""Flower-based aggregation server without TensorFlow dependency."""
 
 from __future__ import annotations
 
@@ -17,7 +17,10 @@ from .fl_utils import log_fl_event
 
 
 class LocusFedAvg(fl.server.strategy.FedAvg):
-    """Custom FedAvg strategy that emits FL events and saves checkpoints."""
+    """
+    Custom FedAvg strategy that emits FL events and saves checkpoints.
+    TensorFlow is removed entirely; the server uses pure NumPy arrays.
+    """
 
     def __init__(
         self,
@@ -27,12 +30,16 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         self.model_path = Path(model_path).expanduser().resolve()
         if not self.model_path.exists():
             raise FileNotFoundError(
-                f"Pretrained model not found at {self.model_path}. "
-                "Please make sure packages/ai/models/gru/gru_model.keras exists."
+                f"Pretrained weights not found at {self.model_path}. "
+                f"Expecting a .npy or .npz file containing initial weights."
             )
 
-        self.template_model = tf.keras.models.load_model(self.model_path)
-        initial_parameters = ndarrays_to_parameters(self.template_model.get_weights())
+        # Load initial weights directly from the Keras model
+        keras_model = tf.keras.models.load_model(self.model_path)
+        initial_weights = keras_model.get_weights()
+        initial_parameters = ndarrays_to_parameters(initial_weights)
+
+        # Create checkpoint directory
         self.ckpt_dir = Path(GLOBAL_CKPT_DIR)
         self.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -109,9 +116,10 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
 
         if parameters is not None:
             weights = parameters_to_ndarrays(parameters)
-            self.template_model.set_weights(weights)
-            ckpt_path = self.ckpt_dir / f"round_{server_round}.keras"
-            self.template_model.save(ckpt_path)
+
+            # Save checkpoint as NumPy file
+            ckpt_path = self.ckpt_dir / f"round_{server_round}.npy"
+            np.save(ckpt_path, weights, allow_pickle=True)
 
             avg_loss = self._average_metric(results, "val_loss")
             contributors = [client.cid for client, _ in results]

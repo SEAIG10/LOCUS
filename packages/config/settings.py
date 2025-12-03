@@ -12,8 +12,8 @@ AI_DEFAULTS = {
 
 FEDERATED_DEFAULTS = {
     "clients_per_round": 1,
-    "local_epochs": 3,
+    "local_epochs": 1,
     "learning_rate": 1e-3,
     "local_batch_size": 32,
-    "server_rounds": 3,
+    "server_rounds": 1000000,
 }

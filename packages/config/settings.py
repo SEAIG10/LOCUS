@@ -8,6 +8,8 @@ AI_MODELS_DIR = PACKAGES_DIR / "ai" / "models"
 
 AI_DEFAULTS = {
     "gru_model": AI_MODELS_DIR / "gru" / "gru_model.keras",
+    # FedPer 온디바이스 개인화 모델 (Base+Head 통합 저장)
+    "fedper_model": AI_MODELS_DIR / "gru" / "fedper_gru_model.keras",
 }
 
 FEDERATED_DEFAULTS = {

@@ -1,3 +1,4 @@
+# LOCUS/packages/ai/realtime/fl_client.py
 """Classic Flower federated client for LOCUS edge devices."""
 
 from __future__ import annotations
@@ -57,10 +58,11 @@ class LocusClient(fl.client.Client):
         if not self.dataset_path.exists():
             raise FileNotFoundError(f"데이터셋을 찾을 수 없습니다: {self.dataset_path}")
 
+        # GRU multi-class (num_zones) 출력에 맞춰 sparse_categorical_crossentropy 사용
         self.model = tf.keras.models.load_model(self.model_path)
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="binary_crossentropy",
+            loss="sparse_categorical_crossentropy",
             metrics=["accuracy"],
         )
 
@@ -151,9 +153,11 @@ class LocusClient(fl.client.Client):
                     f"Dataset {dataset_path} is missing keys: {sorted(missing)}"
                 )
             X_train = data["X_train"].astype(np.float32)
-            y_train = data["y_train"].astype(np.float32)
             X_val = data["X_val"].astype(np.float32)
-            y_val = data["y_val"].astype(np.float32)
+
+            # 정수 클래스 라벨 (0~num_zones-1), 1D로 변환
+            y_train = data["y_train"].astype(np.int32).ravel()
+            y_val = data["y_val"].astype(np.int32).ravel()
 
         train_dataset = (
             tf.data.Dataset.from_tensor_slices((X_train, y_train))

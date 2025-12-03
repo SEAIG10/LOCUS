@@ -29,6 +29,12 @@ SERVER_ADDRESS = f"{SERVER_HOST}:{SERVER_PORT}"
 GRU_MODEL_PATH: Path = AI_DEFAULTS["gru_model"]
 SERVER_INITIAL_WEIGHTS_PATH: Path = GRU_MODEL_PATH.with_name("gru_initial_weights.npy")
 
+# FedPer 온디바이스 모델 경로 (없으면 gru_model 옆에 fedper_gru_model.keras로 떨어지게)
+FEDPER_MODEL_PATH: Path = AI_DEFAULTS.get(
+    "fedper_model",
+    GRU_MODEL_PATH.with_name("fedper_gru_model.keras"),
+)
+
 # Backwards compatibility aliases (legacy docs/scripts)
 PRETRAINED_MODEL_PATH: Path = GRU_MODEL_PATH
 INITIAL_WEIGHTS_PATH: Path = SERVER_INITIAL_WEIGHTS_PATH

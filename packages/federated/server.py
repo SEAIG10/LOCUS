@@ -129,9 +129,9 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
 
             weights = parameters_to_ndarrays(parameters)
 
-            # Save checkpoint to .npy
+            # Save checkpoint to .npy (object array to preserve heterogeneous shapes)
             ckpt_path = self.ckpt_dir / f"round_{server_round}.npy"
-            np.save(ckpt_path, weights, allow_pickle=True)
+            np.save(ckpt_path, np.array(weights, dtype=object), allow_pickle=True)
 
             avg_loss = self._average_metric(results, "val_loss")
 

@@ -15,12 +15,18 @@ from packages.config.settings import AI_DEFAULTS, FEDERATED_DEFAULTS  # noqa: E4
 
 CLIENT_ID = "home_001"
 
-SUPERLINK_HOST = "0.0.0.0"
-SUPERLINK_PORT = 8080
-SUPERLINK_ADDRESS = f"{SUPERLINK_HOST}:{SUPERLINK_PORT}"
-CONTROLLER_APP_PATH = "packages.federated.controller_app:main"
+# Classic Flower server/client endpoints
+SERVER_HOST = "0.0.0.0"
+SERVER_PORT = 8080
+SERVER_ADDRESS = f"{SERVER_HOST}:{SERVER_PORT}"
 
-PRETRAINED_MODEL_PATH = "packages/ai/models/gru/gru_initial_weights.npy"
+# 모델/가중치 경로
+GRU_MODEL_PATH = AI_DEFAULTS["gru_model"]
+SERVER_INITIAL_WEIGHTS_PATH = GRU_MODEL_PATH.with_name("gru_initial_weights.npy")
+
+# Backwards compatibility aliases (legacy docs/scripts)
+PRETRAINED_MODEL_PATH = GRU_MODEL_PATH
+INITIAL_WEIGHTS_PATH = SERVER_INITIAL_WEIGHTS_PATH
 
 ZMQ_ENDPOINTS: Dict[str, str] = {
     "location": "ipc:///tmp/locus.location",
@@ -54,5 +60,5 @@ LOCAL_EPOCHS = FEDERATED_DEFAULTS["local_epochs"]
 LR = FEDERATED_DEFAULTS["learning_rate"]
 LOCAL_BATCH_SIZE = FEDERATED_DEFAULTS["local_batch_size"]
 SERVER_ROUNDS = FEDERATED_DEFAULTS["server_rounds"]
-TRAIN_DATASET_PATH = "data/training_dataset.npz"
+TRAIN_DATASET_PATH = "packages/ai/data/training_dataset.npz"
 GLOBAL_CKPT_DIR = "results/fl_global"

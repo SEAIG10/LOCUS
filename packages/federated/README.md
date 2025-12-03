@@ -72,8 +72,12 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 | 3 | Audio Context | YAMNet + 17-class head로 실내 소리 인식 및 확률 벡터 송신 | `realtime/sensor_audio.py`, `src/audio_recognition/yamnet_processor.py` |
 | 4 | TimeSyncBuffer & Context Encoder | 멀티모달 메시지를 ±100ms 윈도우로 정렬, AttentionContextEncoder로 160차원 벡터 생성 | `src/context_fusion/time_sync_buffer.py`, `src/context_fusion/attention_context_encoder.py`, `src/context_fusion/context_vector.py` |
 | 5 | Sequential GRU + Policy | 30-step 시퀀스로 zone contamination probability 예측 후 정책 이벤트 생성 | `realtime/gru_predictor.py`, `realtime/utils.py`, `src/policy/policy_engine.py` |
-| 6 | Federated Learning (FedPer) | Flower SuperNode 제어 + ClientApp, base GRU 공유, head 로컬 유지 | `controller_app.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
+| 6 | Federated Learning (FedPer) | Flower gRPC 서버/클라이언트, base GRU 공유, head 로컬 유지 | `run_fl_server.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
 | 7 | Dataset Builder & Scenario Simulator | 시나리오에서 (X, y) 시퀀스 생성, synthetic 데이터로 GRU 학습 지원 | `src/dataset/dataset_builder.py`, `src/dataset/scenario_generator.py` |
+
+> **Note**  
+> 현재 브랜치는 Flower 1.x의 클래식 gRPC 서버/클라이언트 패턴으로 동작합니다.  
+> SuperNode/SuperLink 기반 배포가 필요하면 `controller_app.py`를 참고해 별도 브랜치에서 실험하세요.
 
 ---
 
@@ -86,7 +90,7 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 | FR3 | YAMNet 기반 Audio Context 파이프라인 | `src/audio_recognition/yamnet_processor.py`, `realtime/sensor_audio.py` |
 | FR4 | TimeSyncBuffer (timestamp 정렬, 컨텍스트 벡터, 30-step 시퀀스) | `src/context_fusion/time_sync_buffer.py`, `src/context_fusion/context_types.py` |
 | FR5 | Sequential GRU 예측 및 정책 후처리 | `realtime/gru_predictor.py`, `src/policy/policy_engine.py` |
-| FR6 | Federated Learning (Base 공유, Head 로컬) | `controller_app.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
+| FR6 | Federated Learning (Base 공유, Head 로컬) | `run_fl_server.py`, `server.py`, `packages/ai/realtime/fl_client.py` |
 | FR7 | Central Policy Engine + Dashboard Bridge | `src/policy/policy_engine.py`, `src/context_fusion/dashboard_bridge.py` |
 
 ### Non-Functional Goals
@@ -94,7 +98,7 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 - **Privacy-first**: 로우 이미지/오디오 및 GRU Head 파라미터는 디바이스 내에만 저장
 - **Low-latency on-device processing**: Raspberry Pi 5 + 노트북 조합에서 실시간 동작
 - **Robust time alignment**: TimeSyncBuffer의 ±100ms 매칭과 최근값 보간
-- **Edge-grade deployment**: YOLOv8n/YAMNet TFLite, ZeroMQ 메시징, Flower gRPC FedPer
+- **Edge-grade deployment**: YOLOv8n/YAMNet TFLite, ZeroMQ 메시징, Flower gRPC FedPer (classic server/client)
 
 ---
 
@@ -105,8 +109,9 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 ├── README.md
 ├── config.py                 # 글로벌 상수 (Flower, ZMQ, GRU 설정)
 ├── config/                   # zone 정의 및 추가 JSON 설정
-├── controller_app.py         # Flower SuperNode 전략 로더
-├── server.py                 # 커스텀 FedAvg 전략
+├── run_fl_server.py          # Flower 1.x gRPC 서버 엔트리포인트
+├── server.py                 # 커스텀 FedAvg 전략 (NumPy only)
+├── controller_app.py         # (Legacy) SuperNode ServerApp 참조용
 ├── realtime/                 # FR3 → FR4 ZeroMQ ingest 도구
 ├── src/
 │   ├── spatial_mapping/      # FR1: RoomPlan & 위치 인텔리전스
@@ -118,7 +123,7 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
 └── requirements.txt
 ```
 
-> **Pretrained GRU**: `config.PRETRAINED_MODEL_PATH`는 리포지토리 바깥 sibling 디렉터리 `../ai/models/gru/gru_model.keras`를 가리킵니다. 새로운 모델을 학습했다면 동일 경로에 덮어쓰면 됩니다.
+> **Pretrained GRU**: `config.GRU_MODEL_PATH`는 리포지토리 바깥 sibling 디렉터리 `../ai/models/gru/gru_model.keras`를 가리킵니다. 새로운 모델을 학습했다면 동일 경로에 덮어쓰면 됩니다.
 
 ---
 
@@ -132,15 +137,9 @@ LOCUS는 스마트폰과 노트북을 로봇청소기의 온디바이스 엣지�
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-2. **Flower SuperNode**
-   - `config.py`의 `SUPERLINK_ADDRESS`(기본 `0.0.0.0:8080`)를 환경에 맞게 조정하세요.
-   - 서버 실행:
-     ```bash
-     flower-supernode \
-       --insecure \
-       --superlink=0.0.0.0:8080 \
-       --app=packages.federated.controller_app:main
-     ```
+2. **Flower gRPC Server**
+   - `python -m packages.federated.run_fl_server`를 실행하면 `0.0.0.0:8080`에서 클래식 Flower 서버가 기동됩니다.
+   - `config.SERVER_ADDRESS`를 수정하면 포트/호스트를 바꿀 수 있습니다.
 3. **ZeroMQ IPC 권한**
    - 기본 IPC 경로는 `/tmp/locus.*`입니다. 필요 시 `config.ZMQ_ENDPOINTS`로 수정하세요.
 4. **Pretrained GRU 확인**
@@ -197,25 +196,20 @@ PYTHONPATH=. python -m src.context_fusion.time_sync_buffer
 
 ## 🤝 Federated Learning Workflow
 
-1. **Server (Flower SuperNode + Controller App)**  
+1. **Server (Classic Flower gRPC)**  
    ```bash
-   flower-supernode \
-     --insecure \
-     --superlink=0.0.0.0:8080 \
-     --app=packages.federated.controller_app:main
+   (venv) python -m packages.federated.run_fl_server
    ```
-   - `controller_app.py`는 `packages/ai/models/gru/gru_model.keras`를 직접 로드해 초기 가중치를 가져옵니다.
-   - 라운드별 체크포인트는 `results/fl_global/round_<n>.npy`에 저장됩니다.
+   - `run_fl_server.py`가 `LocusFedAvg` 전략을 불러서 0.0.0.0:8080에 바인딩합니다.
+   - 초기 가중치는 `packages/ai/models/gru/gru_initial_weights.npy`에서 불러오며, 라운드별 체크포인트는 `results/fl_global/round_<n>.npy`로 누적됩니다.
+   - SuperNode 기반 배포를 다시 시도하고 싶다면 `controller_app.py`를 참고해 별도 브랜치에서 실험하세요.
 
 2. **Clients (각 현장 디바이스)**  
    ```bash
-   flower-client-app \
-     --insecure \
-     --server-address=127.0.0.1:8080 \
-     --app=packages.ai.realtime.fl_client:client_app
+   (venv) python -m packages.ai.realtime.fl_client <server_ip>:8080
    ```
-   - `fl_client.client_app()`이 Keras 모델과 `.npz` 데이터셋을 로드해 `LOCAL_EPOCHS`, `LOCAL_BATCH_SIZE`, `LR`로 학습을 수행합니다.
-   - 학습 & 평가 메트릭은 `packages/federated/logs/fl_events.log.jsonl`로 기록되어 대시보드에서 재사용됩니다.
+   - `LocusClient`가 Keras 모델과 `.npz` 데이터셋을 로드해 `LOCAL_EPOCHS`, `LOCAL_BATCH_SIZE`, `LR`로 학습합니다.
+   - 학습/평가 메트릭은 `packages/federated/logs/fl_events.log.jsonl`에 기록되어 대시보드에서 재사용됩니다.
 
 3. **ZeroMQ Ingest (FR3 → FR4)**  
    GRU Predictor가 송신하는 실시간 컨텍스트 시퀀스를 수집하려면 아래 브리지를 실행하세요.
@@ -260,7 +254,7 @@ HTTP/ZeroMQ 기반 대시보드는 모두 제거되었으며, 개인정보 보�
 - `config.py`
   - **ZeroMQ**: `ZMQ_ENDPOINTS`에 location/visual/audio/context/telemetry 엔드포인트가 정의되어 있습니다.
   - **Sequence/Vector**: `SEQUENCE_LENGTH=30`, `CONTEXT_DIM=160`, `TIMESYNC_WINDOW_MS=100`.
-  - **Federated**: `SUPERLINK_ADDRESS`, `CLIENTS_PER_ROUND`, `SERVER_ROUNDS`, `LOCAL_EPOCHS`, `LR`, `LOCAL_BATCH_SIZE`.
+  - **Federated**: `SERVER_ADDRESS`, `CLIENTS_PER_ROUND`, `SERVER_ROUNDS`, `LOCAL_EPOCHS`, `LR`, `LOCAL_BATCH_SIZE`, `GRU_MODEL_PATH`, `SERVER_INITIAL_WEIGHTS_PATH`.
   - **Zones**: `ZONE_NAMES`와 `packages/config/zones_config.json`이 구역 인덱스를 공유합니다.
 - **ZeroMQ Topics**
   - `locus.location`, `locus.visual`, `locus.audio`, `locus.context`, `locus.telemetry`.
@@ -282,7 +276,7 @@ HTTP/ZeroMQ 기반 대시보드는 모두 제거되었으며, 개인정보 보�
 - **`FileNotFoundError: gru_model.keras`**  
   → `../ai/models/gru/gru_model.keras`가 존재하는지 확인하고, 새 모델을 동일 경로에 배치하세요.
 - **Flower 연결 실패 (`grpc_status: UNAVAILABLE`)**  
-  → `flower-supernode`가 실행 중인지 확인하고, `SUPERLINK_ADDRESS` 포트가 방화벽에서 열려 있는지 점검하세요.
+  → `python -m packages.federated.run_fl_server`가 실행 중인지 확인하고, `SERVER_ADDRESS` 포트(기본 8080)가 방화벽에서 허용되어 있는지 점검하세요.
 - **ZeroMQ IPC Permission**  
   → `/tmp` 대신 사용자 홈 디렉터리 아래 경로를 `config.ZMQ_ENDPOINTS`에 지정하거나 `chmod`로 권한을 조정하세요.
 - **Dataset 누락**  

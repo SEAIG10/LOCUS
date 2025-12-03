@@ -10,7 +10,7 @@ LOCUS/
 ├── packages/
 │   ├── ai/              # 멀티모달 센서 융합 + GRU 학습 & 정책 파이프라인
 │   ├── config/          # 공용 설정/엔드포인트 (ZMQ, zones 등)
-│   ├── federated/       # Flower SuperNode + FedPer 전략/클라이언트
+│   ├── federated/       # Flower FedAvg 서버/클라이언트 (classic gRPC)
 │   ├── dashboard/       # 로컬 전용 FR1~FR5 CLI 대시보드
 │   └── gateway/         # MQTT/ZMQ/WS 브릿지 모음
 └── apps/
@@ -30,8 +30,9 @@ LOCUS/
 - `models/gru/gru_model.keras`는 `packages/federated`와 공유되는 베이스 가중치 위치입니다.
 
 ### `packages/federated`
-- [README](packages/federated/README.md)에 Flower SuperNode + ClientApp 기반 FedPer 워크플로가 정리되어 있습니다.
-- `controller_app.py`는 `flower-supernode --app=...`에서 로드되며, 클라이언트는 `flower-client-app --app=packages.ai.realtime.fl_client:client_app`으로 실행합니다.
+- [README](packages/federated/README.md)에 Flower 1.x gRPC 기반 FedPer 워크플로가 정리되어 있습니다.
+- 서버는 `python -m packages.federated.run_fl_server`로 실행하며, 클라이언트는 `python -m packages.ai.realtime.fl_client <server_ip>:8080`으로 참여합니다.
+- (Legacy) SuperNode 관련 코드는 `controller_app.py`에 참고용으로 남겨두었습니다.
 - 대시보드 관련 코드는 제거되었으며, 시각화는 `packages/dashboard` CLI 스크립트를 사용합니다.
 
 ## apps/
@@ -66,10 +67,9 @@ LOCUS/
    - ZeroMQ 스트림을 발행하도록 `realtime/` 센서 스크립트를 실행하고, `src/policy` 모듈을 통해 청소 정책을 적용합니다.
    - 학습/추론 결과는 `packages/ai/results/`, `runs/` 등에 저장됩니다.
 2. **연합학습 (`packages/federated`)**  
-   - `pip install -r requirements.txt` 후 서버에서  
-     `flower-supernode --insecure --superlink=0.0.0.0:8080 --app=packages.federated.controller_app:main`  
-     을 실행합니다.
-   - 각 디바이스에서는 `flower-client-app --insecure --server-address=<ip>:8080 --app=packages.ai.realtime.fl_client:client_app` 명령으로 참여합니다. 기본 모델은 `packages/ai/models/gru/gru_model.keras`입니다.
+   - 서버: `python -m packages.federated.run_fl_server` (기본 바인딩 `0.0.0.0:8080`)
+   - 클라이언트: `python -m packages.ai.realtime.fl_client <server_ip>:8080`
+   - 기본 모델은 `packages/ai/models/gru/gru_model.keras`, 초기 가중치는 `packages/ai/models/gru/gru_initial_weights.npy`입니다.
 3. **대시보드 (`packages/dashboard`)**  
    - ZeroMQ/HTTP/MQTT 없이 로컬 JSON만으로 FR1~FR5 상태를 검토합니다.
 

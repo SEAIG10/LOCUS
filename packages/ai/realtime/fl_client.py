@@ -1,4 +1,4 @@
-"""Flower ClientApp for LOCUS edge devices (SuperNode architecture)."""
+"""Classic Flower federated client for LOCUS edge devices."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Tuple
 import flwr as fl
 import numpy as np
 import tensorflow as tf
-from flwr.client import ClientApp
 from flwr.common import (
     Code,
     EvaluateIns,
@@ -24,21 +23,21 @@ from flwr.common import (
 
 from packages.federated.config import (
     CLIENT_ID,
+    GRU_MODEL_PATH,
     LOCAL_BATCH_SIZE,
     LOCAL_EPOCHS,
     LR,
-    PRETRAINED_MODEL_PATH,
     TRAIN_DATASET_PATH,
 )
 from packages.federated.fl_utils import log_fl_event, resolve_dataset_path
 
 
 class LocusClient(fl.client.Client):
-    """TensorFlow-based Flower client compatible with Flower 1.24 ClientApps."""
+    """TensorFlow 기반 Flower Client 구현."""
 
     def __init__(
         self,
-        model_path: str | Path = PRETRAINED_MODEL_PATH,
+        model_path: str | Path = GRU_MODEL_PATH,
         dataset_path: str | Path = TRAIN_DATASET_PATH,
         local_epochs: int = LOCAL_EPOCHS,
         batch_size: int = LOCAL_BATCH_SIZE,
@@ -54,9 +53,9 @@ class LocusClient(fl.client.Client):
         self.dataset_path = resolve_dataset_path(str(dataset_path))
 
         if not self.model_path.exists():
-            raise FileNotFoundError(f"Model not found at {self.model_path}")
+            raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {self.model_path}")
         if not self.dataset_path.exists():
-            raise FileNotFoundError(f"Dataset not found at {self.dataset_path}")
+            raise FileNotFoundError(f"데이터셋을 찾을 수 없습니다: {self.dataset_path}")
 
         self.model = tf.keras.models.load_model(self.model_path)
         self.model.compile(
@@ -81,14 +80,13 @@ class LocusClient(fl.client.Client):
         )
 
     # --------------------------------------------------------------- client API
-    def get_parameters(self, ins: GetParametersIns) -> GetParametersRes:  # noqa: D401
-        parameters = ndarrays_to_parameters(self.model.get_weights())
+    def get_parameters(self, ins: GetParametersIns) -> GetParametersRes:
         return GetParametersRes(
             status=Status(code=Code.OK, message="parameters_ready"),
-            parameters=parameters,
+            parameters=ndarrays_to_parameters(self.model.get_weights()),
         )
 
-    def fit(self, ins: FitIns) -> FitRes:  # noqa: D401
+    def fit(self, ins: FitIns) -> FitRes:
         weights = parameters_to_ndarrays(ins.parameters)
         self.model.set_weights(weights)
         server_round = int(ins.config.get("server_round", 0))
@@ -101,11 +99,7 @@ class LocusClient(fl.client.Client):
             epochs=self.local_epochs,
         )
 
-        history = self.model.fit(
-            self.train_dataset,
-            epochs=self.local_epochs,
-            verbose=0,
-        )
+        history = self.model.fit(self.train_dataset, epochs=self.local_epochs, verbose=0)
         train_loss = float(history.history.get("loss", [0.0])[-1])
         val_loss, val_acc = self._evaluate(stage="fit", round_idx=server_round)
 
@@ -130,19 +124,18 @@ class LocusClient(fl.client.Client):
             metrics=metrics,
         )
 
-    def evaluate(self, ins: EvaluateIns) -> EvaluateRes:  # noqa: D401
+    def evaluate(self, ins: EvaluateIns) -> EvaluateRes:
         weights = parameters_to_ndarrays(ins.parameters)
         self.model.set_weights(weights)
         server_round = int(ins.config.get("server_round", 0))
 
         val_loss, val_acc = self._evaluate(stage="evaluate", round_idx=server_round)
-        metrics = {"val_acc": val_acc}
 
         return EvaluateRes(
             status=Status(code=Code.OK, message="evaluate_success"),
             loss=float(val_loss),
             num_examples=self.val_examples,
-            metrics=metrics,
+            metrics={"val_acc": val_acc},
         )
 
     # ------------------------------------------------------------ local helpers
@@ -192,20 +185,26 @@ class LocusClient(fl.client.Client):
         return val_loss, val_acc
 
 
-def client_app() -> ClientApp:
-    """Entry-point referenced by `flower-client-app --app=...`."""
+def run_fl_client(server_address: str) -> None:
+    """클래식 Flower gRPC 클라이언트를 실행합니다."""
 
-    model_path = PRETRAINED_MODEL_PATH
-    dataset_path = resolve_dataset_path(TRAIN_DATASET_PATH)
+    client = LocusClient(
+        model_path=GRU_MODEL_PATH,
+        dataset_path=TRAIN_DATASET_PATH,
+        local_epochs=LOCAL_EPOCHS,
+        batch_size=LOCAL_BATCH_SIZE,
+        learning_rate=LR,
+        client_id=CLIENT_ID,
+    )
+    fl.client.start_client(
+        server_address=server_address,
+        client=client,
+    )
 
-    def client_fn(context: fl.common.Context) -> fl.client.Client:  # noqa: ANN001
-        return LocusClient(
-            model_path=model_path,
-            dataset_path=dataset_path,
-            local_epochs=LOCAL_EPOCHS,
-            batch_size=LOCAL_BATCH_SIZE,
-            learning_rate=LR,
-            client_id=CLIENT_ID,
-        )
 
-    return ClientApp(client_fn=client_fn)
+if __name__ == "__main__":
+    import sys
+
+    address = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1:8080"
+    print(f"[LOCUS Client] Flower 서버({address})에 연결합니다...")
+    run_fl_client(address)

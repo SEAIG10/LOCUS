@@ -1,9 +1,9 @@
-"""Flower-based aggregation server (pure NumPy, no TensorFlow)."""
+"""Flower-based aggregation server (classic gRPC + pure NumPy weights)."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 import flwr as fl
 import numpy as np
@@ -11,7 +11,11 @@ from flwr.common import FitIns, Parameters, ndarrays_to_parameters, parameters_t
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from .config import CLIENTS_PER_ROUND, GLOBAL_CKPT_DIR, PRETRAINED_MODEL_PATH
+from .config import (
+    CLIENTS_PER_ROUND,
+    GLOBAL_CKPT_DIR,
+    SERVER_INITIAL_WEIGHTS_PATH,
+)
 from .fl_utils import log_fl_event
 
 
@@ -23,11 +27,11 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
 
     def __init__(
         self,
-        model_path: str | Path = PRETRAINED_MODEL_PATH,
+        weights_path: str | Path = SERVER_INITIAL_WEIGHTS_PATH,
         clients_per_round: int = CLIENTS_PER_ROUND,
     ) -> None:
 
-        self.model_path = Path(model_path).expanduser().resolve()
+        self.model_path = Path(weights_path).expanduser().resolve()
 
         if not self.model_path.exists():
             raise FileNotFoundError(
@@ -39,6 +43,7 @@ class LocusFedAvg(fl.server.strategy.FedAvg):
         initial_weights = np.load(self.model_path, allow_pickle=True)
         if isinstance(initial_weights, np.ndarray):
             initial_weights = initial_weights.tolist()
+        initial_weights = [np.asarray(w) for w in initial_weights]
 
         initial_parameters = ndarrays_to_parameters(initial_weights)
 
